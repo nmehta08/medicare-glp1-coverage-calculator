@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Estimate federal drug spending under a hypothetical expansion of GLP-1 coverage for Medicare Part D beneficiaries.">
+  <meta property="og:title" content="Medicare GLP-1 Coverage Calculator">
+  <meta property="og:description" content="Choose a population and a time horizon. See the estimated federal drug spending and the evidence behind it.">
+  <meta property="og:type" content="website">
+  <title>Medicare GLP-1 Coverage Calculator</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172e34;
+      --muted: #465e65;
+      --teal: #075c52;
+      --line: #d4e1de;
+      --paper: #fff;
+      --background: #f3f7f6;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--background);
+      color: var(--ink);
+      font: 1rem/1.6 system-ui, sans-serif;
+    }
+
+    .wrap { width: min(960px, calc(100% - 2rem)); margin-inline: auto; }
+
+    header {
+      padding-top: clamp(1.5rem, 5vw, 3.5rem);
+      background: #12363b;
+      color: white;
+    }
+
+    h1, h2, p { margin: 0 0 .85rem; }
+
+    h1 {
+      max-width: 20ch;
+      font-size: clamp(2rem, 6vw, 3.5rem);
+      line-height: 1.1;
+      letter-spacing: -.04em;
+    }
+
+    h2 { font-size: 1.3rem; line-height: 1.3; }
+    header p { color: #d0e9e5; }
+    main { padding-block: 1.5rem; }
+
+    nav { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: 1.4rem; }
+
+    nav a {
+      padding: .6rem .85rem;
+      border-radius: .5rem .5rem 0 0;
+      color: #d0e9e5;
+      text-decoration: none;
+    }
+
+    nav a[aria-current="page"] {
+      background: var(--background);
+      color: var(--teal);
+      font-weight: 750;
+    }
+
+    a { color: var(--teal); text-underline-offset: .18em; }
+    :focus-visible { outline: 3px solid #a85a0c; outline-offset: 4px; }
+    [hidden] { display: none !important; }
+
+    .card {
+      margin-bottom: 1rem;
+      padding: clamp(1rem, 3vw, 1.6rem);
+      border: 1px solid var(--line);
+      border-radius: .8rem;
+      background: var(--paper);
+    }
+
+    .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+    label { display: block; font-weight: 700; }
+
+    select {
+      width: 100%;
+      min-height: 2.75rem;
+      margin-top: .35rem;
+      padding: .4rem .6rem;
+      border: 1px solid #748e8a;
+      border-radius: .35rem;
+      background: white;
+      color: var(--ink);
+      font: inherit;
+    }
+
+    .result { background: #e5f2ed; border-color: #bedbd2; }
+
+    .amount {
+      color: var(--teal);
+      font-size: clamp(2rem, 6vw, 3.3rem);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -.04em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .muted, small { color: var(--muted); }
+    .card > :last-child { margin-bottom: 0; }
+    .table-wrap { overflow-x: auto; }
+
+    table { width: 100%; border-collapse: collapse; font-size: .94rem; }
+    caption { padding-bottom: .5rem; text-align: left; color: var(--muted); }
+
+    th, td {
+      padding: .55rem .6rem;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .number { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .formula { padding: .8rem; background: var(--background); border-radius: .4rem; }
+    ol { padding-left: 1.5rem; }
+    li { margin-bottom: .55rem; }
+
+    footer { padding-bottom: 1.75rem; color: var(--muted); font-size: .88rem; }
+
+    @media (max-width: 480px) {
+      .fields { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Medicare GLP-1 Coverage Calculator</h1>
+      <p>Explore what expanded coverage for weight management could cost Medicare.</p>
+      <nav id="navigation" aria-label="Pages">
+        <a id="calculator-link" href="#calculator" aria-current="page">Calculator</a>
+        <a id="methods-link" href="#methods">Methods &amp; sources</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <noscript>
+      <p class="card">Enable JavaScript to use the calculator. The methods and references are available below.</p>
+    </noscript>
+
+    <section id="calculator" aria-labelledby="calculator-heading" hidden>
+      <div class="card">
+        <h2 id="calculator-heading" tabindex="-1">Choose a population and time horizon</h2>
+        <div class="fields">
+          <div>
+            <label for="population">Part D beneficiaries offered coverage</label>
+            <select id="population"></select>
+          </div>
+          <div>
+            <label for="years">Years of coverage</label>
+            <select id="years"></select>
+          </div>
+        </div>
+      </div>
+
+      <section class="card result" aria-labelledby="result-heading">
+        <h2 id="result-heading">Estimated federal drug spending</h2>
+        <p id="amount" class="amount" aria-hidden="true"></p>
+        <p id="statement" role="status" aria-atomic="true"></p>
+        <p class="muted">This hypothetical expansion uses the CMS Bridge price as a benchmark.</p>
+        <p><a href="#methods">See how this estimate was calculated →</a></p>
+      </section>
+    </section>
+
+    <section id="methods" aria-labelledby="methods-heading">
+      <div class="card">
+        <h2 id="methods-heading" tabindex="-1">How the estimate was calculated</h2>
+        <p>The calculator follows one cohort of Medicare Part D beneficiaries offered GLP-1 coverage for weight management. It assumes that 20% start treatment at the beginning of year one and that each starter fills one monthly prescription throughout the selected horizon.</p>
+        <p class="formula"><strong>Federal drug spending</strong> = people offered coverage × 20% uptake × 12 monthly fills per year × years × ($245 net price − $50 copay).</p>
+        <p id="calculation"><strong>Worked example.</strong> 1,000,000 × 20% × 12 × 2 × $195 = $936,000,000.</p>
+        <p id="utilization"></p>
+      </div>
+
+      <div class="card" id="annual-results" hidden>
+        <h2>Year-by-year calculation</h2>
+        <div class="table-wrap" tabindex="0" role="region" aria-label="Annual spending table">
+          <table>
+            <caption>Projected monthly fills and spending in U.S. dollars</caption>
+            <thead>
+              <tr>
+                <th scope="col">Year</th>
+                <th scope="col" class="number">Monthly fills</th>
+                <th scope="col" class="number">Federal drug spending</th>
+                <th scope="col" class="number">Beneficiary copays</th>
+              </tr>
+            </thead>
+            <tbody id="annual-rows"></tbody>
+            <tfoot id="annual-total"></tfoot>
+          </table>
+        </div>
+        <p id="sensitivity" style="margin-top: 1rem"></p>
+        <p class="muted">The sensitivity analysis varies uptake alone. KFF used 10% and 25% as illustrative participation scenarios. These values represent scenarios rather than statistical confidence limits. <a href="#source-4">[4]</a></p>
+      </div>
+
+      <div class="card">
+        <h2>Assumptions and evidence</h2>
+        <div class="table-wrap" tabindex="0" role="region" aria-label="Assumptions and evidence table">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Assumption</th>
+                <th scope="col">Value</th>
+                <th scope="col">Source or rationale</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Population offered coverage</th>
+                <td>1–57 million</td>
+                <td>User-selected. The rounded ceiling reflects the scale of national Part D enrollment. KFF estimated about 3.8 million potentially eligible for the actual Bridge using 2023 claims. <a href="#source-3">[3]</a> <a href="#source-4">[4]</a></td>
+              </tr>
+              <tr>
+                <th scope="row">Coverage horizon</th>
+                <td>2–10 years</td>
+                <td>User-selected hypothetical expansion. CMS scheduled the Bridge from July 1, 2026, through December 31, 2027. It operates outside the usual Part D payment flow. <a href="#source-1">[1]</a></td>
+              </tr>
+              <tr>
+                <th scope="row">Uptake</th>
+                <td>20%</td>
+                <td>Illustrative choice within KFF’s 10%–25% participation scenarios. Actual uptake depends on eligibility, access, prescribing, and patient choice. <a href="#source-4">[4]</a></td>
+              </tr>
+              <tr>
+                <th scope="row">Prescription fills</th>
+                <td>12 monthly fills per starter per year</td>
+                <td>KFF assumed continuous monthly filling in its 18-month example. Extending that pattern across 2–10 years is a modeling choice. Delayed starts, missed fills, and discontinuation would reduce spending under otherwise identical assumptions. <a href="#source-4">[4]</a></td>
+              </tr>
+              <tr>
+                <th scope="row">Price per monthly supply</th>
+                <td>$245 net price<br>$50 beneficiary copay<br>$195 federal drug cost</td>
+                <td>CMS published the $245 net price and $50 copay. KFF used the $195 difference for its Medicare spending calculation. This model holds both prices constant in nominal dollars. <a href="#source-2">[2]</a> <a href="#source-4">[4]</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Scope and interpretation</h2>
+        <p>Estimates cover federal drug spending after beneficiary copays under the modeled payment terms. They exclude administrative expenses, clinical monitoring, adverse-event costs, potential medical savings, and spending under existing coverage. Estimating incremental Medicare budget impact would require a comparator and those additional costs.</p>
+        <p>Bridge eligibility depends on CMS clinical and coverage rules, including prior authorization and whether the prescribed use is already eligible for coverage under Part D. Use CMS provider guidance for individual coverage decisions. <a href="#source-5">[5]</a></p>
+        <p><strong>Published benchmark.</strong> Applying the same arithmetic to KFF’s 18-month example, with 3.8 million eligible beneficiaries, 10%–25% uptake, and $195 per monthly fill, gives about $1.3–$3.3 billion in federal drug spending. <a href="#source-4">[4]</a></p>
+      </div>
+
+      <div class="card">
+        <h2>References</h2>
+        <ol>
+          <li id="source-1"><a href="https://www.cms.gov/medicare/coverage/prescription-drug-coverage/medicare-glp-1-bridge">CMS. Medicare GLP-1 Bridge.</a> Program dates and payment structure.</li>
+          <li id="source-2"><a href="https://www.cms.gov/files/document/medicare-glp-1-bridge-expectations-faqs.pdf">CMS. Medicare GLP-1 Bridge Expectations and FAQs for Part D Sponsors.</a> June 10, 2026. Question 3 documents the net price and copay.</li>
+          <li id="source-3"><a href="https://data.cms.gov/summary-statistics-on-beneficiary-enrollment/medicare-and-medicaid-reports/medicare-monthly-enrollment">CMS. Medicare Monthly Enrollment.</a> National Part D enrollment series, July 2026 reference period.</li>
+          <li id="source-4"><a href="https://www.kff.org/medicare/nearly-four-million-medicare-beneficiaries-met-the-eligibility-criteria-in-2023-for-the-medicare-glp-1-bridge/">KFF. Nearly Four Million Medicare Beneficiaries Met the Eligibility Criteria in 2023 for the Medicare GLP-1 Bridge.</a> June 29, 2026. Eligibility estimate and illustrative spending scenarios.</li>
+          <li id="source-5"><a href="https://www.cms.gov/medicare/coverage/prescription-drug-coverage/medicare-glp-1-bridge/information-providers">CMS. Medicare GLP-1 Bridge Information for Providers.</a> Clinical eligibility and prior authorization.</li>
+        </ol>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap">Independent policy scenario model</footer>
+
+  <script>
+    "use strict";
+
+    const byId = id => document.getElementById(id);
+    const population = byId("population");
+    const years = byId("years");
+
+    const assumptions = Object.freeze({
+      uptake: 0.20,
+      annualFills: 12,
+      netPrice: 245,
+      copay: 50
+    });
+
+    const counts = new Intl.NumberFormat("en-US");
+    const dollars = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0
+    });
+    const scaledDollars = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 3
+    });
+
+    function readableCost(value) {
+      if (value >= 1e9) return scaledDollars.format(value / 1e9) + " billion";
+      if (value >= 1e6) return scaledDollars.format(value / 1e6) + " million";
+      return dollars.format(value);
+    }
+
+    function addOptions(select, min, max, label) {
+      for (let value = min; value <= max; value += 1) {
+        select.add(new Option(label(value), String(value)));
+      }
+    }
+
+    function project(people, horizon, uptake = assumptions.uptake) {
+      const starters = Math.round(people * uptake);
+      const annualFills = starters * assumptions.annualFills;
+      const federalPerFill = assumptions.netPrice - assumptions.copay;
+
+      return {
+        starters,
+        annualFills,
+        federalPerFill,
+        annualFederal: annualFills * federalPerFill,
+        annualCopays: annualFills * assumptions.copay,
+        federalTotal: annualFills * federalPerFill * horizon
+      };
+    }
+
+    function spendingRow(label, fills, federal, copays) {
+      const row = document.createElement("tr");
+      const heading = document.createElement("th");
+      heading.scope = "row";
+      heading.textContent = label;
+      row.append(heading);
+
+      for (const value of [counts.format(fills), dollars.format(federal), dollars.format(copays)]) {
+        const cell = document.createElement("td");
+        cell.className = "number";
+        cell.textContent = value;
+        row.append(cell);
+      }
+
+      return row;
+    }
+
+    function render() {
+      const millions = Number(population.value);
+      const horizon = Number(years.value);
+      const people = millions * 1e6;
+      const estimate = project(people, horizon);
+      const cost = readableCost(estimate.federalTotal);
+      const uptakePercent = Math.round(assumptions.uptake * 100);
+
+      byId("amount").textContent = cost;
+      byId("statement").textContent =
+        `Offering GLP-1 coverage to ${millions} million Medicare Part D beneficiaries for ${horizon} years would cost Medicare an estimated ${cost} in drug spending if ${uptakePercent}% start treatment and fill a prescription each month.`;
+
+      const calculation = byId("calculation");
+      const label = document.createElement("strong");
+      label.textContent = "Your calculation. ";
+      calculation.replaceChildren(
+        label,
+        `${counts.format(people)} × ${uptakePercent}% × ${assumptions.annualFills} × ${horizon} × ${dollars.format(estimate.federalPerFill)} = ${dollars.format(estimate.federalTotal)}.`
+      );
+
+      byId("utilization").textContent =
+        `This scenario includes ${counts.format(estimate.starters)} treatment starters and ${counts.format(estimate.annualFills * horizon)} monthly fills over ${horizon} years.`;
+
+      byId("annual-rows").replaceChildren(...Array.from({ length: horizon }, (_, index) =>
+        spendingRow(index + 1, estimate.annualFills, estimate.annualFederal, estimate.annualCopays)
+      ));
+      byId("annual-total").replaceChildren(
+        spendingRow("Total", estimate.annualFills * horizon, estimate.federalTotal, estimate.annualCopays * horizon)
+      );
+
+      const low = readableCost(project(people, horizon, 0.10).federalTotal);
+      const high = readableCost(project(people, horizon, 0.25).federalTotal);
+      byId("sensitivity").textContent =
+        `Federal drug spending would be ${low} at 10% uptake and ${high} at 25% uptake.`;
+    }
+
+    function navigate(moveFocus = false) {
+      const hash = window.location.hash;
+      const reference = /^#source-[1-5]$/.test(hash);
+      const showMethods = hash === "#methods" || reference;
+
+      byId("calculator").hidden = showMethods;
+      byId("methods").hidden = !showMethods;
+
+      const active = byId(showMethods ? "methods-link" : "calculator-link");
+      const inactive = byId(showMethods ? "calculator-link" : "methods-link");
+      active.setAttribute("aria-current", "page");
+      inactive.removeAttribute("aria-current");
+
+      if (reference) {
+        byId(hash.slice(1)).scrollIntoView();
+      } else if (moveFocus) {
+        byId(showMethods ? "methods-heading" : "calculator-heading").focus({ preventScroll: true });
+        window.scrollTo(0, 0);
+      }
+    }
+
+    addOptions(population, 1, 57, value => `${value} million`);
+    addOptions(years, 2, 10, value => `${value} years`);
+    population.addEventListener("change", render);
+    years.addEventListener("change", render);
+    window.addEventListener("hashchange", () => navigate(true));
+
+    render();
+    byId("annual-results").hidden = false;
+    navigate();
+  </script>
+</body>
+</html>
